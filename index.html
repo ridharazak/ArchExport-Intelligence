@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArchExport Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: drawing-sheet header (title block) + filter bar + one register per section, scanned like a schedule */
+:root{
+  --ink:#16222e; --paper:#f4f6f5; --panel:#ffffff; --line:#d5dcdb; --muted:#5b6b73; --accent:#0f6e6a;
+  --ok:#1f7a3a; --warn:#a55a00; --bad:#b42318; --chip:#e6efee;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif; --body:"Source Sans 3","Segoe UI",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#e3ebea; --paper:#0f1619; --panel:#172126; --line:#2c3a40; --muted:#93a6ac; --accent:#4fc1b9;
+  --ok:#5cc47e; --warn:#e8a54b; --bad:#f07a6e; --chip:#1f3034; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --ink:#e3ebea; --paper:#0f1619; --panel:#172126; --line:#2c3a40; --muted:#93a6ac; --accent:#4fc1b9;
+  --ok:#5cc47e; --warn:#e8a54b; --bad:#f07a6e; --chip:#1f3034; color-scheme:dark;}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:16px/1.5 var(--body)}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+header{border-bottom:2px solid var(--ink);padding:28px 0 18px}
+.tb{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end}
+h1{font:800 clamp(28px,5vw,44px)/1.05 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:6px 0 0;max-width:62ch}
+.meta{border:1px solid var(--ink);font:500 13px/1.4 var(--display);display:grid;grid-template-columns:auto auto}
+.meta div{padding:4px 10px;border-bottom:1px solid var(--ink)}
+.meta div:nth-child(odd){border-right:1px solid var(--ink);color:var(--muted)}
+.meta div:nth-last-child(-n+2){border-bottom:0}
+.lead{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:22px 0 8px}
+.stat{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);padding:12px 14px}
+.stat b{font:800 28px/1 var(--display);display:block;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:14px}
+.stat.alert{border-left-color:var(--bad)}
+.note{background:var(--chip);padding:12px 14px;margin:14px 0 0;max-width:80ch}
+nav{position:sticky;top:0;z-index:5;background:var(--paper);border-bottom:1px solid var(--line);padding:10px 0}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar a{font:600 14px var(--display);text-decoration:none;color:var(--ink);padding:6px 10px;border:1px solid var(--line);background:var(--panel)}
+.bar a:hover{border-color:var(--accent)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
+input,select{font:15px var(--body);padding:7px 10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);min-width:0}
+input{width:220px}
+section{padding:30px 0 8px}
+h2{font:700 24px/1.2 var(--display);margin:0 0 4px;display:flex;gap:10px;align-items:baseline;text-wrap:balance}
+h2 small{font:600 13px var(--display);color:var(--muted)}
+.intro{color:var(--muted);margin:0 0 12px;max-width:75ch}
+.tbl{overflow-x:auto;border:1px solid var(--line);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th{font:600 12px var(--display);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:9px 10px;border-bottom:2px solid var(--line);white-space:nowrap;background:var(--panel)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;font:600 12px var(--display);padding:2px 8px;border-radius:99px;background:var(--chip);white-space:nowrap}
+.p-A{background:var(--ok);color:var(--panel)} .p-B{background:var(--accent);color:var(--panel)}
+.p-C{background:var(--chip)} .p-D,.p-X{background:var(--bad);color:var(--panel)}
+.st-closed{color:var(--bad);font-weight:600} .st-soon{color:var(--warn);font-weight:600}
+.empty{color:var(--muted);padding:14px;display:none}
+ol.actions{counter-reset:a;list-style:none;padding:0;margin:0;display:grid;gap:10px}
+ol.actions li{background:var(--panel);border:1px solid var(--line);padding:14px 16px 14px 58px;position:relative;max-width:85ch}
+ol.actions li::before{counter-increment:a;content:counter(a);position:absolute;left:16px;top:12px;font:800 26px/1 var(--display);color:var(--accent)}
+ol.actions b{font-family:var(--display)}
+.check{display:block;color:var(--muted);font-size:14px;margin-top:4px}
+footer{border-top:2px solid var(--ink);margin-top:36px;padding:16px 0 40px;color:var(--muted);font-size:14px}
+@media (max-width:640px){.tb{grid-template-columns:1fr}.filters{margin-left:0;width:100%}input{flex:1}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="tb">
+      <div>
+        <h1>ArchExport Intelligence</h1>
+        <p class="sub">Overseas work for Malaysian architects: tenders, early projects, clients, partners and events across ASEAN, Central Asia and South Asia.</p>
+      </div>
+      <div class="meta" aria-label="Report details">
+        <div>Scan</div><div>Baseline</div>
+        <div>As of</div><div>26 Nov 2026</div>
+        <div>Time zone</div><div>MYT (UTC+8)</div>
+      </div>
+    </div>
+    <div class="lead">
+      <div class="stat alert"><b>0</b><span>open tenders confirmed today</span></div>
+      <div class="stat"><b id="c-proj">17</b><span>funded projects to approach early</span></div>
+      <div class="stat"><b id="c-cl">15</b><span>potential clients</span></div>
+      <div class="stat"><b id="c-nw">13</b><span>networks + 5 partner firms</span></div>
+      <div class="stat"><b>16 Mar</b><span>next key event: UzBuild 2027, Tashkent</span></div>
+    </div>
+    <p class="note">No architectural tender in the priority countries could be confirmed as still open. The best openings now are funded projects in New Tashkent, Nusantara (IKN) and Vietnam's new hospitals. Scores are out of 100 and provisional. Evidence: V1 official document, V2 several good sources, V3 one good source, V4 needs checking. This is market research, not legal advice.</p>
+  </div>
+</header>
+
+<nav aria-label="Sections">
+  <div class="wrap bar">
+    <a href="#tenders">Tenders</a><a href="#projects">Early projects</a><a href="#clients">Clients</a><a href="#networks">Partners</a><a href="#events">Events</a><a href="#rules">Rules</a><a href="#actions">Next steps</a>
+    <div class="filters">
+      <label for="q" hidden>Search</label><input id="q" type="search" placeholder="Search all tables">
+      <label for="country" hidden>Country</label><select id="country"><option value="">All countries</option></select>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+  <section id="tenders"><h2>Tenders and competitions <small>6 checked</small></h2>
+    <p class="intro">None can be bid on today. The Tajikistan notice shows that ADB buys full architectural design and supervision packages from international firms.</p>
+    <div class="tbl"><table data-set="tenders"></table><p class="empty">No matches.</p></div></section>
+
+  <section id="projects"><h2>Early projects <small>before an architect is hired</small></h2>
+    <p class="intro">Funded or approved, with no public design tender yet. Stage: S01 policy, S02 investment, S04 funding, S05 masterplan, S06 hiring consultants, S07 design, S08 construction.</p>
+    <div class="tbl"><table data-set="projects"></table><p class="empty">No matches.</p></div></section>
+
+  <section id="clients"><h2>Potential clients</h2>
+    <p class="intro">Organisations that may hire architects. None is known to be looking right now. Use official company channels only.</p>
+    <div class="tbl"><table data-set="clients"></table><p class="empty">No matches.</p></div></section>
+
+  <section id="networks"><h2>Partners and networks</h2>
+    <p class="intro">MATRADE said on 10 Nov 2026 it is focusing on Central Asia. Start there, with PAM.</p>
+    <div class="tbl"><table data-set="networks"></table><p class="empty">No matches.</p></div>
+    <h2 style="margin-top:22px;font-size:19px">Possible local partner firms <small>not yet contacted</small></h2>
+    <div class="tbl"><table data-set="firms"></table><p class="empty">No matches.</p></div></section>
+
+  <section id="events"><h2>Upcoming events</h2>
+    <p class="intro">Confirm dates with the organiser before booking.</p>
+    <div class="tbl"><table data-set="events"></table><p class="empty">No matches.</p></div></section>
+
+  <section id="rules"><h2>Rules for working abroad</h2>
+    <p class="intro">Malaysian (LAM) registration alone does not let you practise in these countries. Plan on a licensed local partner. Also check withholding tax, currency of payment and professional indemnity cover.</p>
+    <div class="tbl"><table data-set="rules"></table><p class="empty">No matches.</p></div></section>
+
+  <section id="actions"><h2>Top five next steps</h2>
+    <ol class="actions">
+      <li><b>Register on the tender portals and set alerts.</b> ADB CMS, World Bank, UNGM and IsDB. Alerts for "architectural design", "health facilities" and "schools" in Uzbekistan, Tajikistan, Kyrgyzstan, Bangladesh and Cambodia. The Tajikistan design package was missed by about eight weeks.<span class="check">Check: each portal's firm-registration documents.</span></li>
+      <li><b>Pitch New Tashkent before UzBuild (16–18 Mar 2027).</b> Ask MATRADE and the Malaysian Embassy in Tashkent for an introduction to the New Tashkent Directorate. Lead with hospital planning, then campus and housing design.<span class="check">Check: how the Directorate picks designers; Uzbek licensing.</span></li>
+      <li><b>Enter IKN through investors.</b> Contact PT Dian Jaya Indonesia about hotel interiors and design management for its Q4 2026 build. Line up an IAI host architect first.<span class="check">Check: the foreign-architect STRA route.</span></li>
+      <li><b>Team up for Vietnam's hospital competitions.</b> Pick one Vietnamese healthcare design firm. Watch for the Tay Ninh competition; offer specialist planning to the HCMC Trauma Hospital winner.<span class="check">Check: each competition's rules on foreign lead architects.</span></li>
+      <li><b>Join a group export push.</b> Ask PAM and MATRADE to add architects to the 2027 Central Asia programme. Start ASEAN Architect registration now.<span class="check">Check: MATRADE's 2027 mission calendar.</span></li>
+    </ol>
+  </section>
+</main>
+
+<footer><div class="wrap">ArchExport Intelligence · baseline scan of 26 November 2026 · every row links to the source page it came from · nothing here is an offer of work.</div></footer>
+
+<script>
+const L=(t,u)=>u?`<a href="${u}" rel="noopener">${t}</a>`:t;
+const pr=s=>{const m=String(s).match(/\(([A-D])\)/);if(/Disq/i.test(s))return`<span class="pill p-X">Disqualified</span>`;return m?`<span class="pill p-${m[1]}">${s}</span>`:`<span class="pill">${s}</span>`};
+const DATA={
+tenders:{cols:["ID","Country","Opportunity","Client","Deadline / status","Evidence","Score","What it means"],rows:[
+["ARCH-TJ-2026-001","Tajikistan",L("CS-01 Architectural Design and Supervision Firm (ADB health project, 30 months)","https://moh.tj/en/request-for-expressions-of-interest-integrated-regional-health-security-and-primary-healthcare-services-project/"),"Ministry of Health and Social Protection",'<span class="st-closed">Closed 2 Oct 2026</span>; work starts ~10 Dec 2026',"V1",pr("62 (C)"),"Offer healthcare planning or BIM to the shortlisted firms."],
+["ARCH-VN-2026-001","Vietnam",L("HCMC Trauma Hospital, ~US$160m","https://news.tuoitre.vn/ho-chi-minh-city-proposes-constructing-vietnams-first-dedicated-trauma-hospital-worth-160mn-103251225130152209.htm"),"HCMC Civil and Industrial Construction Board",'<span class="st-closed">Competition decided Sept 2026</span>; design 2027–2030',"V2",pr("58 (C)"),"Approach the winning team for specialist work."],
+["ARCH-VN-2026-002","Vietnam",L("Tay Ninh new General Hospital","https://en.sggp.org.vn/tay-ninh-to-build-general-hospital-worth-over-vnd225-trillion-post126208.html"),"Tay Ninh Province",'<span class="st-soon">Design competition promised; no date</span>',"V3",pr("60 (C)"),"Watch for the notice; find a Vietnamese partner now."],
+["ARCH-PH-2026-001","Philippines",L("ADB HQ BIM and Design Services, Manila","https://www.adb.org/sites/default/files/page/559266/itb-bim-design-services-updated.pdf"),"Asian Development Bank",'<span class="st-soon">Deadline not found</span>',"V4",pr("Not scored"),"Open the ITB today and check if it is still open."],
+["ARCH-PK-2026-001","Pakistan",L("Al Watani five-star hotel and mixed-use, Lahore","https://cbdpunjab.gov.pk/AlWataniHospitality"),"CBD Punjab (PCBDDA)",'<span class="st-closed">Closed 11 Jun 2026</span>; investor bid, not design',"V1",pr("40 (D)"),"Find the winning consortium; offer hotel design support."],
+["ARCH-PK-2026-002","Pakistan",L("RUDA consultant for high-value projects","https://ruda.gov.pk/system/files/EOI%20for%20Consultancy%20High%20Value%20Projects.pdf"),"Ravi Urban Development Authority",'<span class="st-closed">Closed 24 Jul 2026</span>',"V1",pr("Disqualified"),"Lahore-registered firms only; no JVs; marketing scope."]]},
+projects:{cols:["Country","Project","Client / developer","Stage","Possible service","Next step","Evidence"],rows:[
+["Uzbekistan",L("120-bed central hospital, New Tashkent","https://president.uz/en/lists/view/9707"),"Directorate of New Tashkent","S02","Hospital planning, design","Ask how designers are picked","V2"],
+["Uzbekistan",L("60-ha Turkish district + hotels, schools, clinics","https://daryo.uz/en/2026/11/19/uzbekistan-invites-turkish-investors-to-participate-in-new-tashkent-construction/"),"Turkish investors (invited Nov 2026)","S01–S02","Masterplan, hotel, school design","Team with Turkish developers","V3"],
+["Uzbekistan",L("Silk City, Mavj, Marjon housing","https://president.uz/en/lists/view/9707"),"Not named","S02","Housing, interiors","Find the developers","V2"],
+["Indonesia",L("Korean apartment + hotel, Rp1.15 trillion, IKN","https://ikn.kompas.com/read/2026/05/03/222226187/investor-korea-masuk-ikn-bangun-hotel-dan-apartemen-rp-115-triliun?page=all"),"PT Dian Jaya Indonesia","S07","Hotel interiors, design management","Approach before fit-out","V2"],
+["Indonesia",L("Sports facilities and restaurants, Rp50 billion, IKN","https://www.kompas.id/artikel/en-investasi-di-ikn-capai-rp-7239-triliun-didominasi-swasta"),"Not named","S07","Small-practice design","Ask Otorita IKN for the investor","V3"],
+["Indonesia",L("Star Bright mixed-use, Rp1.25 trillion, IKN","https://indonesiabusinesspost.com/7020/business-and-investment/chinese-star-bright-eyes-nusantara-capital-construction-as-indonesia-races-its-construction"),"PT Star Bright International Investment","S08","Later phases, interiors","Watch","V2"],
+["Vietnam",L("US$546m health and elderly care complex, Hanoi","https://vietnamnews.vn/society/1797209/ha-noi-approves-546m-health-and-elderly-care-complex.html"),"Hanoi Medical University Hospital","S04","Hospital and aged-care planning","Partner with a Hanoi firm","V2"],
+["Vietnam",L("25-storey hospital, VND 889 billion, Thanh Hoa","https://news.laodong.vn/suc-khoe/thanh-hoa-chap-thuan-dau-tu-du-an-benh-vien-25-tang-gan-890-ti-dong-1760952.ldo"),"Investor by bidding","S04","Design for the investor","Track the award","V3"],
+["Vietnam",L("Hat Mon General Hospital, 4 ha, Hanoi","https://dautuhanoi.hanoi.gov.vn/en/project-detail/dau-tu-benh-vien-da-khoa-hat-mon"),"Investor by open bidding","S04","Design for the investor","Track the award","V1"],
+["Vietnam",L("Son Tra medical centre, 350 beds, Da Nang","https://news.tuoitre.vn/da-nang-approves-266mn-expansion-of-son-tra-medical-center-103260405110155501.htm"),"Da Nang civil works board","S06–S07","Healthcare planning advice","Ask if design is let","V3"],
+["Kazakhstan",L("US$14.3bn building plan to 2029 (US$758m health)","https://astanatimes.com/?p=122501"),"Government; Samruk-Kazyna","S01","Hospitals, clinics","Map who uses outside designers","V3"],
+["Kazakhstan",L("250-bed cancer centre, Almaty","https://caliber.az/en/post/almaty-advances-plans-for-250-bed-multi-specialist-cancer-centre"),"Almaty Public Health Dept","S07","Little; design done","Low priority","V3"],
+["Bangladesh",L("1,000-bed China–Bangladesh hospital, Nilphamari","https://www.bssnews.net/at-a-glance/354620"),"Government, China-backed","S04","Likely tied to Chinese firms","Low priority","V2"],
+["Bangladesh",L("Chinese Economic and Industrial Zone, 800 acres","https://investbangladesh.gov.bd/press-release/construction-of-chinese-economic-and-industrial-zone-ceiz-begins"),"CRBC / BEZA","S08","Factories, offices for tenants","Ask BEZA about tenants","V1"],
+["Cambodia",L("Airport Satellite City + worker housing, Techo Airport","https://akp.gov.kh/post/detail/351046"),"OCIC","S05","Masterplan, affordable housing","Approach OCIC","V2"],
+["Pakistan",L("Lahore Master Plan 2050 / Karachi plan 2047","https://www.dawn.com/news/amp/1997260"),"LDA / Sindh government","S01","Follow-on urban design","Watch district schemes","V3"],
+["Pakistan",L("New CBDs: Rawalpindi, Faisalabad, Multan","https://www.zameen.com/news/punjab-to-develop-new-cbds-in-six-cities.html"),"CBD Punjab","S01","Masterplan, mixed-use","Watch CBD Punjab notices","V3"]]},
+clients:{cols:["ID","Organisation","Country","Building","Why they might need you","Way in","Priority"],rows:[
+["CL-UZ-01",L("Directorate for the Construction of New Tashkent","https://president.uz/en/lists/view/9707"),"Uzbekistan","New city; US$2bn built","Hospital, housing, schools; uses foreign planners","MATRADE / Malaysian Embassy",pr("A")],
+["CL-UZ-02","Turkish investors in New Tashkent","Uzbekistan","60-ha district, hotels, clinics","Need design partners","Turkish–Uzbek business forums",pr("B")],
+["CL-ID-01",L("Otorita IKN","https://beritasela.id/detail/598194/otorita-ikn-dan-bi-gelar-mahakam-investment-forum-2026-delegasi-enam-negara-hadir"),"Indonesia","Capital city; Rp72.39 trillion so far","Links to investors via INVESTARA","Mahakam Investment Forum",pr("B")],
+["CL-ID-02","PT Dian Jaya Indonesia","Indonesia","Apartment + hotel, IKN","Hotel interiors, design management","Through Otorita IKN",pr("B")],
+["CL-ID-03","PT Star Bright International Investment","Indonesia","Mixed-use, IKN","Later phases to 2028","Through Otorita IKN",pr("C")],
+["CL-ID-04","Mayapada Hospital Nusantara","Indonesia","Hospital, open since 2024","Future expansion","Group head office",pr("C")],
+["CL-KH-01",L("OCIC","https://ocic.com.kh/post/canadia-groups-ocic-receives-us-dfc-100-million-strategic-financing-commitment-for-techo-international-airport"),"Cambodia","Airport, satellite city","Townships, housing","Malaysian Embassy Phnom Penh",pr("B")],
+["CL-KH-02","Royal Group Koh Rong Development","Cambodia","Island resort, 99-year lease","Tropical resort design","Check status first (V4)",pr("C")],
+["CL-VN-01","Hanoi Medical University Hospital","Vietnam","US$546m health + elderly care","Hospital and aged care","With a Vietnamese partner",pr("B")],
+["CL-VN-02","HCMC Civil and Industrial Construction Board","Vietnam","Trauma hospital, city buildings","Runs design competitions","Watch notices",pr("B")],
+["CL-VN-03","Vinaconex","Vietnam","AEGIS hospital, 1,000 beds","Hires foreign designers","Corporate office",pr("C")],
+["CL-KZ-01","Samruk-Kazyna","Kazakhstan","Hospitals 2027–28","State fund building social facilities","MATRADE Almaty",pr("C")],
+["CL-PK-01",L("CBD Punjab (PCBDDA)","https://cbdpunjab.gov.pk/AlWataniHospitality"),"Pakistan","Hotel, retail, housing plots","Plot winners need designers","Watch bids; meet winners",pr("B")],
+["CL-BD-01",L("BEZA","https://investbangladesh.gov.bd/press-release/construction-of-chinese-economic-and-industrial-zone-ceiz-begins"),"Bangladesh","Economic zones","Factories, offices for tenants","BIDA/BEZA investor desks",pr("C")],
+["CL-MY-01",L("Sunway Medical Centre","https://observerbd.com/news/562886"),"Malaysia / Bangladesh","Bangladesh representative named Jan 2026","Possible future facilities","Direct, in Malaysia",pr("C")]]},
+networks:{cols:["ID","Organisation","Country","Type","Why it helps","First step"],rows:[
+["NW-MY-01",L("MATRADE","https://www.matrade.gov.my/"),"Malaysia","Trade agency","Overseas offices, missions","Ask about a Central Asia architecture mission"],
+["NW-MY-02",L("MITI","https://www.miti.gov.my/miti/resources/Speech/YBTM_Speech_at_Expanding_Horizons_Exporting_Architectural_Services_Overseas.pdf"),"Malaysia","Ministry","Backs architecture exports","Brief them on a group pitch"],
+["NW-MY-03","PAM","Malaysia","Institute","Runs export events","Join its international committee"],
+["NW-AS-01",L("ASEAN Architect Council","https://www.prc.gov.ph/sites/default/files/ARCHITECT_PRIMER_ASEAN.pdf"),"ASEAN","Registration body","Opens host-country registration","Apply via the Malaysian committee"],
+["NW-ID-01",L("Dewan Arsitek Indonesia","https://dewanarsitek.id/en/?p=7283"),"Indonesia","Regulator","Foreign-architect STRA","Read the RFA steps"],
+["NW-ID-02","Ikatan Arsitek Indonesia (IAI)","Indonesia","Institute","Source of your host architect","Ask for East Kalimantan members"],
+["NW-VN-01",L("Vietnam Association of Architects","https://kientrucvietnam.org.vn/"),"Vietnam","Institute","Publishes competition rules","Follow its notices"],
+["NW-UZ-01","Union of Architects of Uzbekistan","Uzbekistan","Institute","Knows local firms","Meet at UzBuild 2027"],
+["NW-UZ-02",L("Association of Young Architects of Uzbekistan","https://www.ifc.org/content/dam/ifc/doc/2025/uzbekistan-green-building-competition-2025.pdf"),"Uzbekistan","Network","Partner on IFC green building competition","Offer a climate design talk"],
+["NW-UZ-03",L("SHARE Architects","https://share-architects.com/?p=16072"),"Uzbekistan / Kazakhstan","Forum organiser","Foreign firms meet local developers","Ask about SHARE 2027"],
+["NW-KZ-01",L("NIPI Astanagenplan / Center of Urbanism of Astana","https://dknews.kz/en/articles-in-english/391797-cities-of-the-future-why-classical-school-is-no"),"Kazakhstan","City planning bodies","Co-organise ARCHICA","Attend ARCHICA 2027"],
+["NW-BD-01",L("Institute of Architects Bangladesh","https://en.wikipedia.org/wiki/Institute_of_Architects_Bangladesh"),"Bangladesh","Institute","Members must design new buildings (verify)","Find a member firm"],
+["NW-DB-01","ADB, World Bank, IsDB, AIIB, UNGM","Regional","Funders","Buy design packages","Register on each portal"]]},
+firms:{cols:["Firm","Country","Seen on"],rows:[
+["MB Studio","Uzbekistan",L("Regnum Plaza, Tashkent","https://en.wikipedia.org/wiki/Regnum_Plaza")],
+["ARCCON Architects Engineers Planners","Uzbekistan",L("New Tashkent transport and infrastructure","https://www.euronews.com/2026/01/17/new-tashkent-building-a-sustainable-city-from-scratch")],
+["Cross Works","Uzbekistan",L("New Tashkent District 1 guidelines","https://ad-c.org/winner/founder-managing-director-platinum-winner-urban-design-master-planning-iada-2026/")],
+["MPN+Partners","Vietnam",L("Hong Ngoc Phuc Truong Minh hospital","https://enr.com/articles/53180-award-of-merit-heath-care-hong-ngoc-phuc-thuong-minh-general-hospital")],
+["NESPAK; Nayyar Ali Dada & Associates","Pakistan",L("Lahore masterplan bids","https://tribune.com.pk/story/2264803/three-consortiums-for-master-plan-shortlisted")]]},
+events:{cols:["Event","Country","Date","Why go","Evidence"],rows:[
+[L("UzBuild 2027","https://www.cantonfair.net/event/19870-uzbuild"),"Uzbekistan","16–18 Mar 2027","Main building fair; developers attend","V2"],
+[L("Intelligent Building Expo Tashkent","https://www.firesafetysearch.com/?p=27200"),"Uzbekistan","26–28 May 2027","Fire safety and smart buildings","V3"],
+[L("Tashkent International Investment Forum","https://gov.uz/en/news/view/6548"),"Uzbekistan","2027 TBC (2026: 16–18 Jun)","Investors, New Tashkent team","V1 for 2026"],
+[L("Construction Indonesia 2027","https://www.cantonfair.net/event/6699-construction-indonesia"),"Indonesia","15–18 Sep 2027","Large construction fair","V4"],
+[L("Mahakam Investment Forum","https://mediakaltim.com/mif-2026-di-ikn-investor-internasional-jajaki-peluang-kerja-sama/"),"Indonesia","2027 TBC (2026: 21–22 Oct)","Meet IKN investors","V2 for 2026"],
+[L("Big 5 Construct Uzbekistan + INDEX","https://www.uzdaily.uz/en/big-5-construct-uzbekistan-and-index-uzbekistan-set-for-2027/"),"Uzbekistan","27–29 Oct 2027","First Big 5 in Central Asia","V3"],
+["SHARE Uzbekistan / ARCHICA 2027","Uzbekistan / Kazakhstan","TBC","Architect–developer forums","V2 for 2026"]]},
+rules:{cols:["Country","What the rule says","Source","What to do"],rows:[
+["ASEAN","ASEAN Architects can become Registered Foreign Architects in other member countries, alone or with a local architect, as each country allows",L("ASEAN MRA (V1)","https://www.prc.gov.ph/sites/default/files/ARCHITECT_PRIMER_ASEAN.pdf"),"Get ASEAN Architect status first"],
+["Indonesia","STRA needed; foreigners get a special STRA via RFA naming an Indonesian host architect; local firm needs PT/PMA, KBLI 71101",L("DAI (V1)","https://dewanarsitek.id/en/?p=7283"),"Choose an IAI host before pitching"],
+["Vietnam","Foreigners need a valid practice certificate, Vietnamese or a recognised foreign one",L("Architecture Law 2019, Art. 31 (V3)","https://vietnamlawmagazine.vn/what-are-requirements-for-foreign-architects-to-practice-in-vietnam-71955.html"),"Use competitions that accept home licences"],
+["Bangladesh","New buildings must be designed by IAB members",L("Wikipedia (V3)","https://en.wikipedia.org/wiki/Institute_of_Architects_Bangladesh"),"Consult to an IAB member firm"],
+["Pakistan","Some notices accept only Pakistan-registered firms",L("RUDA EOI (V1)","https://ruda.gov.pk/system/files/EOI%20for%20Consultancy%20High%20Value%20Projects.pdf"),"Read every notice's eligibility"],
+["Uzbekistan / Kazakhstan / Tajikistan","Not checked in this scan","—","Check licensing, tax and payment next"],
+["ADB / World Bank projects","Open to member-country firms; Malaysia is an ADB member",L("trade.gov (V3)","https://www.trade.gov/adb"),"Register on the bank portals"]]}
+};
+const countries=new Set();
+document.querySelectorAll("table[data-set]").forEach(t=>{
+  const d=DATA[t.dataset.set];
+  const ci=d.cols.findIndex(c=>c==="Country");
+  t.innerHTML="<thead><tr>"+d.cols.map(c=>`<th scope="col">${c}</th>`).join("")+"</tr></thead><tbody>"+
+    d.rows.map(r=>{const c=ci>=0?r[ci]:"";c.split(" / ").forEach(x=>x&&x!=="Regional"&&countries.add(x));
+      return `<tr data-c="${c}">`+r.map((v,i)=>`<td${/^(ID|Date|Score|Evidence|Stage)$/.test(d.cols[i])?' class="n"':""}>${v}</td>`).join("")+"</tr>"}).join("")+"</tbody>";
+});
+const sel=document.getElementById("country");
+[...countries].sort().forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;sel.appendChild(o)});
+function apply(){
+  const q=document.getElementById("q").value.trim().toLowerCase(),c=sel.value;
+  document.querySelectorAll("table[data-set]").forEach(t=>{
+    let shown=0;
+    t.querySelectorAll("tbody tr").forEach(tr=>{
+      const ok=(!q||tr.textContent.toLowerCase().includes(q))&&(!c||tr.dataset.c.split(" / ").includes(c)||!tr.dataset.c);
+      tr.hidden=!ok; if(ok)shown++;
+    });
+    t.parentElement.querySelector(".empty").style.display=shown?"none":"block";
+  });
+}
+document.getElementById("q").addEventListener("input",apply);
+sel.addEventListener("change",apply);
+</script>
+</body>
+</html>
